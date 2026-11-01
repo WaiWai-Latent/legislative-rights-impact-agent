@@ -1,6 +1,6 @@
 # src/diff_engine.py
 import difflib
-from src.ingestion import extract_text_from_pdf, chunk_text
+from ingest import extract_text_from_pdf, chunk_text
 
 def diff_two_pdfs(old_pdf: str, new_pdf: str):
     old_text = extract_text_from_pdf(old_pdf)
