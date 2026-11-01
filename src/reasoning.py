@@ -3,7 +3,6 @@ import os
 from dotenv import load_dotenv
 from openai import OpenAI
 from retrieval import hybrid_retrieve
-import streamlit as st
 
 from pathlib import Path
 load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent / ".env")
@@ -11,7 +10,7 @@ load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent / ".env")
 model="openai/gpt-oss-20b"
 
 client = OpenAI(
-   api_key = st.secrets["GROQ_API_KEY"],
+    api_key=os.getenv("GROQ_API_KEY"),
     base_url="https://api.groq.com/openai/v1"
 )
 
