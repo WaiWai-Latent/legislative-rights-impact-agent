@@ -177,7 +177,7 @@ st.markdown('<p class="hero-title">Legislative Intelligence</p>', unsafe_allow_h
 st.markdown('<p class="hero-subtitle">Transform dense government notifications into actionable, cited insights.</p>', unsafe_allow_html=True)
 
 # Create Tabs
-tab_rag, tab_diff = st.tabs(["🔍 Impact Analysis", "🔄 Version Diff Engine"])
+tab_rag, tab_diff, tab_impact = st.tabs(["🔍 Impact Analysis", "🔄 Version Diff Engine", "📊 Policy Change Impact Graph"])
 
 # --- TAB 1: RAG ---
 with tab_rag:
@@ -228,32 +228,72 @@ with tab_rag:
                     out = analyze(query, top_k=top_k) or {}
                     answer = out.get("answer", "") if isinstance(out, dict) else str(out)
                     sources = out.get("sources", []) if isinstance(out, dict) else []
+                    confidence_raw = out.get("confidence", "") if isinstance(out, dict) else ""
+                    confidence = str(confidence_raw).strip().lower()
+                    if confidence in ("high", "medium", "low"):
+                        badge_label = confidence.capitalize()
+                    else:
+                        badge_label = "Confidence unavailable"
+
+                    # Confidence badge colors
+                    color_map = {"high": "green", "medium": "orange", "low": "red"}
+                    badge_color = color_map.get(confidence, "gray")
 
                     st.markdown("<br>", unsafe_allow_html=True)
-                    col_ans, col_src = st.columns([2.5, 1])
+                    st.markdown(f"### 📋 Analysis Report  \n<span style='color:{badge_color}; font-weight:600;'>Confidence: {badge_label}</span>", unsafe_allow_html=True)
 
-                    # Left: Answer
-                    with col_ans:
-                        st.markdown(f"""
-                        <div class="glass-card">
-                            <h3 style='color: #38bdf8; margin-top: 0;'>📋 Analysis Report</h3>
-                            <div style='color: #e2e8f0; line-height: 1.6;'>
-                                {answer}
-                            </div>
-                        </div>
-                        """, unsafe_allow_html=True)
+                    # Structured sections: parse markdown headings
+                    import re
+                    sections = {}
+                    current = "Answer / Overview"
+                    sections[current] = []
+                    for line in str(answer).splitlines():
+                        m = re.match(r"^#{1,3}\s+(.+)$", line.strip())
+                        if m:
+                            heading = m.group(1).strip()
+                            current = heading
+                            sections.setdefault(current, [])
+                        else:
+                            sections.setdefault(current, []).append(line)
+                    # Render each non-empty section as a card
+                    for heading, lines in sections.items():
+                        text = "\n".join(lines).strip()
+                        if not text:
+                            continue
+                        with st.container():
+                            st.markdown(f"**{heading}**")
+                            st.markdown(text)
 
-                    # Right: Audit Trail
-                    with col_src:
-                        st.markdown("### 📎 Audit Trail")
-                        st.caption("The AI grounded its answer in these chunks:")
-                        for s in (sources or []):
-                            st.markdown(f"""
-                            <div class="glass-card" style="padding: 1rem; margin-bottom: 0.5rem;">
-                                <strong style='color: #a78bfa;'>📄 {s['source']}</strong><br>
-                                <span style='font-size: 0.8rem; color: #94a3b8;'>Chunk {s['chunk']} | Score: {s['score']}</span>
-                            </div>
-                            """, unsafe_allow_html=True)
+                    # Sources
+                    if sources:
+                        st.markdown("### Sources")
+                        for s in sources:
+                            name = s.get("source", "Unknown source") if isinstance(s, dict) else str(s)
+                            chunk = s.get("chunk", "") if isinstance(s, dict) else ""
+                            score = s.get("score", None) if isinstance(s, dict) else None
+                            score_text = f" (score: {score})" if score is not None else ""
+                            st.markdown(f"- **{name}**{score_text} — chunk {chunk}")
+
+                    # Supporting Evidence panel
+                    with st.expander("View Supporting Evidence", expanded=False):
+                        evidence = (sources or [])[:4]
+                        if not evidence:
+                            st.info("No supporting evidence is available for this answer.")
+                        else:
+                            for i, ev in enumerate(evidence, 1):
+                                if not isinstance(ev, dict):
+                                    st.markdown(f"**Evidence {i}**\n\n{ev}")
+                                    continue
+                                name = ev.get("source") or "Unknown source"
+                                score = ev.get("score", None)
+                                text = ev.get("text", "")
+                                st.markdown(f"**{i}. {name}**" + (f"  \nRelevance score: {score}" if score is not None else ""))
+                                if text:
+                                    st.markdown(f"> {text}")
+                                else:
+                                    st.caption("No text snippet available.")
+                                if i < len(evidence):
+                                    st.markdown("---")
                             
                 except Exception as e:
                     st.error(f"❌ Error: {str(e)}")
@@ -295,3 +335,67 @@ with tab_diff:
                                 st.markdown(f"- **{line}**")
             except Exception as e:
                 st.error(f"Diff failed: {e}")
+
+# --- TAB 3: POLICY CHANGE IMPACT GRAPH ---
+with tab_impact:
+    st.markdown("### 📊 Policy Change Impact Graph")
+    st.caption("Upload an earlier and a later version of the same policy document. No versions are fabricated; if you do not have two versions, this feature shows an empty state.")
+    c1, c2 = st.columns(2)
+    with c1:
+        old_file = st.file_uploader("Earlier version (PDF)", type=["pdf"], key="impact_old")
+    with c2:
+        new_file = st.file_uploader("Later version (PDF)", type=["pdf"], key="impact_new")
+
+    if st.button("Analyze Policy Changes", type="primary") and old_file and new_file:
+        import os as _os
+        _os.makedirs("/tmp/lcis", exist_ok=True)
+        p_old = f"/tmp/lcis/{old_file.name}"
+        p_new = f"/tmp/lcis/{new_file.name}"
+        with open(p_old, "wb") as f:
+            f.write(old_file.read())
+        with open(p_new, "wb") as f:
+            f.write(new_file.read())
+        try:
+            from diff_engine import diff_two_pdfs
+            from impact_graph import build_impact_table, build_graph
+            changes = diff_two_pdfs(p_old, p_new)
+            rows = build_impact_table(changes)
+            if not rows:
+                st.info("No meaningful changes detected between the two documents.")
+            else:
+                st.markdown("#### Change Summary")
+                for r in rows:
+                    st.markdown(f"- **{r['category']}**")
+                    st.markdown(f"  - Previous: {r['previous'] or '(none)'}")
+                    st.markdown(f"  - New: {r['new'] or '(none)'}")
+                st.markdown("#### Detailed Table")
+                st.table(rows)
+
+                # Node selection
+                g = build_graph(rows)
+                if g is not None:
+                    nodes = list(g.nodes())
+                    sel = st.selectbox("Inspect node", nodes)
+                    if sel is not None:
+                        st.markdown(f"**Node:** {sel}")
+                        st.markdown(f"Type: {g.nodes[sel].get('type', 'unknown')}")
+                        st.markdown("Edges:")
+                        for u, v, d in g.edges(data=True):
+                            if u == sel or v == sel:
+                                st.markdown(f"- {u} → {v} ({d.get('relation','')})")
+
+                # Evidence via RAG
+                st.markdown("#### Evidence-Grounded Impact Analysis")
+                query = "What are the impacts of the changes between these two policy versions?"
+                try:
+                    from reasoning import analyze
+                    out = analyze(query, top_k=5)
+                    st.markdown(out.get("answer", "") if isinstance(out, dict) else str(out))
+                    if isinstance(out, dict) and not out.get("sources"):
+                        st.warning("Insufficient evidence to determine impact.")
+                except Exception as e:
+                    st.error(f"Error: {e}")
+        except Exception as e:
+            st.error(f"Analysis failed: {e}")
+    elif not (old_file and new_file):
+        st.info("Upload both versions to analyze policy changes.")

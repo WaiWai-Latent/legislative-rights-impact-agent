@@ -81,7 +81,8 @@ def analyze(query: str, top_k: int = 6, model: str = "openai/gpt-oss-20b"):
             {
                 "source": c["metadata"]["source"],
                 "chunk": c["metadata"]["chunk_id"],
-                "score": round(c["score"], 3)
+                "score": round(c["score"], 3),
+                "text": c.get("text", ""),
             }
             for c in chunks
         ],
