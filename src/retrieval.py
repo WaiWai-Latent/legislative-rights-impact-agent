@@ -1,10 +1,11 @@
 # src/retrieval.py
 import os
+from pathlib import Path
 import chromadb
 from chromadb.utils import embedding_functions
 from rank_bm25 import BM25Okapi
 
-CHROMA_PATH = "./chroma_db"
+CHROMA_PATH = str(Path(__file__).resolve().parent.parent / "chroma_db")
 COLLECTION_NAME = "govt_notifications"
 
 _client = chromadb.PersistentClient(path=CHROMA_PATH)
