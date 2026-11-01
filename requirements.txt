@@ -3,7 +3,6 @@ chromadb
 langchain_text_splitters
 sentence-transformers
 streamlit
-os
 dotenv
 openai
 rank_bm25
