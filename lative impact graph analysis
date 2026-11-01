@@ -1,0 +1,282 @@
+[1mdiff --git a/src/app.py b/src/app.py[m
+[1mindex b5e0f14..2b51e9d 100644[m
+[1m--- a/src/app.py[m
+[1m+++ b/src/app.py[m
+[36m@@ -177,7 +177,7 @@[m [mst.markdown('<p class="hero-title">Legislative Intelligence</p>', unsafe_allow_h[m
+ st.markdown('<p class="hero-subtitle">Transform dense government notifications into actionable, cited insights.</p>', unsafe_allow_html=True)[m
+ [m
+ # Create Tabs[m
+[31m-tab_rag, tab_diff = st.tabs(["🔍 Impact Analysis", "🔄 Version Diff Engine"])[m
+[32m+[m[32mtab_rag, tab_diff, tab_impact = st.tabs(["🔍 Impact Analysis", "🔄 Version Diff Engine", "📊 Policy Change Impact Graph"])[m
+ [m
+ # --- TAB 1: RAG ---[m
+ with tab_rag:[m
+[36m@@ -228,32 +228,72 @@[m [mwith tab_rag:[m
+                     out = analyze(query, top_k=top_k) or {}[m
+                     answer = out.get("answer", "") if isinstance(out, dict) else str(out)[m
+                     sources = out.get("sources", []) if isinstance(out, dict) else [][m
+[32m+[m[32m                    confidence_raw = out.get("confidence", "") if isinstance(out, dict) else ""[m
+[32m+[m[32m                    confidence = str(confidence_raw).strip().lower()[m
+[32m+[m[32m                    if confidence in ("high", "medium", "low"):[m
+[32m+[m[32m                        badge_label = confidence.capitalize()[m
+[32m+[m[32m                    else:[m
+[32m+[m[32m                        badge_label = "Confidence unavailable"[m
+[32m+[m
+[32m+[m[32m                    # Confidence badge colors[m
+[32m+[m[32m                    color_map = {"high": "green", "medium": "orange", "low": "red"}[m
+[32m+[m[32m                    badge_color = color_map.get(confidence, "gray")[m
+ [m
+                     st.markdown("<br>", unsafe_allow_html=True)[m
+[31m-                    col_ans, col_src = st.columns([2.5, 1])[m
+[32m+[m[32m                    st.markdown(f"### 📋 Analysis Report  \n<span style='color:{badge_color}; font-weight:600;'>Confidence: {badge_label}</span>", unsafe_allow_html=True)[m
+[32m+[m
+[32m+[m[32m                    # Structured sections: parse markdown headings[m
+[32m+[m[32m                    import re[m
+[32m+[m[32m                    sections = {}[m
+[32m+[m[32m                    current = "Answer / Overview"[m
+[32m+[m[32m                    sections[current] = [][m
+[32m+[m[32m                    for line in str(answer).splitlines():[m
+[32m+[m[32m                        m = re.match(r"^#{1,3}\s+(.+)$", line.strip())[m
+[32m+[m[32m                        if m:[m
+[32m+[m[32m                            heading = m.group(1).strip()[m
+[32m+[m[32m                            current = heading[m
+[32m+[m[32m                            sections.setdefault(current, [])[m
+[32m+[m[32m                        else:[m
+[32m+[m[32m                            sections.setdefault(current, []).append(line)[m
+[32m+[m[32m                    # Render each non-empty section as a card[m
+[32m+[m[32m                    for heading, lines in sections.items():[m
+[32m+[m[32m                        text = "\n".join(lines).strip()[m
+[32m+[m[32m                        if not text:[m
+[32m+[m[32m                            continue[m
+[32m+[m[32m                        with st.container():[m
+[32m+[m[32m                            st.markdown(f"**{heading}**")[m
+[32m+[m[32m                            st.markdown(text)[m
+ [m
+[31m-                    # Left: Answer[m
+[31m-                    with col_ans:[m
+[31m-                        st.markdown(f"""[m
+[31m-                        <div class="glass-card">[m
+[31m-                            <h3 style='color: #38bdf8; margin-top: 0;'>📋 Analysis Report</h3>[m
+[31m-                            <div style='color: #e2e8f0; line-height: 1.6;'>[m
+[31m-                                {answer}[m
+[31m-                            </div>[m
+[31m-                        </div>[m
+[31m-                        """, unsafe_allow_html=True)[m
+[32m+[m[32m                    # Sources[m
+[32m+[m[32m                    if sources:[m
+[32m+[m[32m                        st.markdown("### Sources")[m
+[32m+[m[32m                        for s in sources:[m
+[32m+[m[32m                            name = s.get("source", "Unknown source") if isinstance(s, dict) else str(s)[m
+[32m+[m[32m                            chunk = s.get("chunk", "") if isinstance(s, dict) else ""[m
+[32m+[m[32m                            score = s.get("score", None) if isinstance(s, dict) else None[m
+[32m+[m[32m                            score_text = f" (score: {score})" if score is not None else ""[m
+[32m+[m[32m                            st.markdown(f"- **{name}**{score_text} — chunk {chunk}")[m
+ [m
+[31m-                    # Right: Audit Trail[m
+[31m-                    with col_src:[m
+[31m-                        st.markdown("### 📎 Audit Trail")[m
+[31m-                        st.caption("The AI grounded its answer in these chunks:")[m
+[31m-                        for s in (sources or []):[m
+[31m-                            st.markdown(f"""[m
+[31m-                            <div class="glass-card" style="padding: 1rem; margin-bottom: 0.5rem;">[m
+[31m-                                <strong style='color: #a78bfa;'>📄 {s['source']}</strong><br>[m
+[31m-                                <span style='font-size: 0.8rem; color: #94a3b8;'>Chunk {s['chunk']} | Score: {s['score']}</span>[m
+[31m-                            </div>[m
+[31m-                            """, unsafe_allow_html=True)[m
+[32m+[m[32m                    # Supporting Evidence panel[m
+[32m+[m[32m                    with st.expander("View Supporting Evidence", expanded=False):[m
+[32m+[m[32m                        evidence = (sources or [])[:4][m
+[32m+[m[32m                        if not evidence:[m
+[32m+[m[32m                            st.info("No supporting evidence is available for this answer.")[m
+[32m+[m[32m                        else:[m
+[32m+[m[32m                            for i, ev in enumerate(evidence, 1):[m
+[32m+[m[32m                                if not isinstance(ev, dict):[m
+[32m+[m[32m                                    st.markdown(f"**Evidence {i}**\n\n{ev}")[m
+[32m+[m[32m                                    continue[m
+[32m+[m[32m                                name = ev.get("source") or "Unknown source"[m
+[32m+[m[32m                                score = ev.get("score", None)[m
+[32m+[m[32m                                text = ev.get("text", "")[m
+[32m+[m[32m                                st.markdown(f"**{i}. {name}**" + (f"  \nRelevance score: {score}" if score is not None else ""))[m
+[32m+[m[32m                                if text:[m
+[32m+[m[32m                                    st.markdown(f"> {text}")[m
+[32m+[m[32m                                else:[m
+[32m+[m[32m                                    st.caption("No text snippet available.")[m
+[32m+[m[32m                                if i < len(evidence):[m
+[32m+[m[32m                                    st.markdown("---")[m
+                             [m
+                 except Exception as e:[m
+                     st.error(f"❌ Error: {str(e)}")[m
+[36m@@ -294,4 +334,68 @@[m [mwith tab_diff:[m
+                             for line in c['new']:[m
+                                 st.markdown(f"- **{line}**")[m
+             except Exception as e:[m
+[31m-                st.error(f"Diff failed: {e}")[m
+\ No newline at end of file[m
+[32m+[m[32m                st.error(f"Diff failed: {e}")[m
+[32m+[m
+[32m+[m[32m# --- TAB 3: POLICY CHANGE IMPACT GRAPH ---[m
+[32m+[m[32mwith tab_impact:[m
+[32m+[m[32m    st.markdown("### 📊 Policy Change Impact Graph")[m
+[32m+[m[32m    st.caption("Upload an earlier and a later version of the same policy document. No versions are fabricated; if you do not have two versions, this feature shows an empty state.")[m
+[32m+[m[32m    c1, c2 = st.columns(2)[m
+[32m+[m[32m    with c1:[m
+[32m+[m[32m        old_file = st.file_uploader("Earlier version (PDF)", type=["pdf"], key="impact_old")[m
+[32m+[m[32m    with c2:[m
+[32m+[m[32m        new_file = st.file_uploader("Later version (PDF)", type=["pdf"], key="impact_new")[m
+[32m+[m
+[32m+[m[32m    if st.button("Analyze Policy Changes", type="primary") and old_file and new_file:[m
+[32m+[m[32m        import os as _os[m
+[32m+[m[32m        _os.makedirs("/tmp/lcis", exist_ok=True)[m
+[32m+[m[32m        p_old = f"/tmp/lcis/{old_file.name}"[m
+[32m+[m[32m        p_new = f"/tmp/lcis/{new_file.name}"[m
+[32m+[m[32m        with open(p_old, "wb") as f:[m
+[32m+[m[32m            f.write(old_file.read())[m
+[32m+[m[32m        with open(p_new, "wb") as f:[m
+[32m+[m[32m            f.write(new_file.read())[m
+[32m+[m[32m        try:[m
+[32m+[m[32m            from diff_engine import diff_two_pdfs[m
+[32m+[m[32m            from impact_graph import build_impact_table, build_graph[m
+[32m+[m[32m            changes = diff_two_pdfs(p_old, p_new)[m
+[32m+[m[32m            rows = build_impact_table(changes)[m
+[32m+[m[32m            if not rows:[m
+[32m+[m[32m                st.info("No meaningful changes detected between the two documents.")[m
+[32m+[m[32m            else:[m
+[32m+[m[32m                st.markdown("#### Change Summary")[m
+[32m+[m[32m                for r in rows:[m
+[32m+[m[32m                    st.markdown(f"- **{r['category']}**")[m
+[32m+[m[32m                    st.markdown(f"  - Previous: {r['previous'] or '(none)'}")[m
+[32m+[m[32m                    st.markdown(f"  - New: {r['new'] or '(none)'}")[m
+[32m+[m[32m                st.markdown("#### Detailed Table")[m
+[32m+[m[32m                st.table(rows)[m
+[32m+[m
+[32m+[m[32m                # Node selection[m
+[32m+[m[32m                g = build_graph(rows)[m
+[32m+[m[32m                if g is not None:[m
+[32m+[m[32m                    nodes = list(g.nodes())[m
+[32m+[m[32m                    sel = st.selectbox("Inspect node", nodes)[m
+[32m+[m[32m                    if sel is not None:[m
+[32m+[m[32m                        st.markdown(f"**Node:** {sel}")[m
+[32m+[m[32m                        st.markdown(f"Type: {g.nodes[sel].get('type', 'unknown')}")[m
+[32m+[m[32m                        st.markdown("Edges:")[m
+[32m+[m[32m                        for u, v, d in g.edges(data=True):[m
+[32m+[m[32m                            if u == sel or v == sel:[m
+[32m+[m[32m                                st.markdown(f"- {u} → {v} ({d.get('relation','')})")[m
+[32m+[m
+[32m+[m[32m                # Evidence via RAG[m
+[32m+[m[32m                st.markdown("#### Evidence-Grounded Impact Analysis")[m
+[32m+[m[32m                query = "What are the impacts of the changes between these two policy versions?"[m
+[32m+[m[32m                try:[m
+[32m+[m[32m                    from reasoning import analyze[m
+[32m+[m[32m                    out = analyze(query, top_k=5)[m
+[32m+[m[32m                    st.markdown(out.get("answer", "") if isinstance(out, dict) else str(out))[m
+[32m+[m[32m                    if isinstance(out, dict) and not out.get("sources"):[m
+[32m+[m[32m                        st.warning("Insufficient evidence to determine impact.")[m
+[32m+[m[32m                except Exception as e:[m
+[32m+[m[32m                    st.error(f"Error: {e}")[m
+[32m+[m[32m        except Exception as e:[m
+[32m+[m[32m            st.error(f"Analysis failed: {e}")[m
+[32m+[m[32m    elif not (old_file and new_file):[m
+[32m+[m[32m        st.info("Upload both versions to analyze policy changes.")[m
+\ No newline at end of file[m
+[1mdiff --git a/src/impact_graph.py b/src/impact_graph.py[m
+[1mnew file mode 100644[m
+[1mindex 0000000..8214d97[m
+[1m--- /dev/null[m
+[1m+++ b/src/impact_graph.py[m
+[36m@@ -0,0 +1,81 @@[m
+[32m+[m[32m"""Policy Change Impact Graph helpers.[m
+[32m+[m
+[32m+[m[32mReuse diff_two_pdfs output. Classify changes with conservative keyword heuristics.[m
+[32m+[m[32mNo fabricated data; empty inputs yield empty results.[m
+[32m+[m[32m"""[m
+[32m+[m[32mimport re[m
+[32m+[m
+[32m+[m[32mCATEGORIES = [[m
+[32m+[m[32m    "Eligibility criteria changed",[m
+[32m+[m[32m    "Benefits or financial assistance changed",[m
+[32m+[m[32m    "Application procedures changed",[m
+[32m+[m[32m    "Deadlines or implementation dates changed",[m
+[32m+[m[32m    "Responsible departments or authorities changed",[m
+[32m+[m[32m    "New provision introduced",[m
+[32m+[m[32m    "Existing provision removed",[m
+[32m+[m[32m    "Wording changed without clearly established substantive impact",[m
+[32m+[m[32m][m
+[32m+[m
+[32m+[m
+[32m+[m[32mdef classify_change(change):[m
+[32m+[m[32m    """Return a category string for a diff change dict."""[m
+[32m+[m[32m    ctype = change.get("type", "")[m
+[32m+[m[32m    old = " ".join(change.get("old", []))[m
+[32m+[m[32m    new = " ".join(change.get("new", []))[m
+[32m+[m[32m    text = (old + " " + new).lower()[m
+[32m+[m
+[32m+[m[32m    if ctype == "insert":[m
+[32m+[m[32m        return "New provision introduced"[m
+[32m+[m[32m    if ctype == "delete":[m
+[32m+[m[32m        return "Existing provision removed"[m
+[32m+[m
+[32m+[m[32m    if any(k in text for k in ["eligible", "eligibility", "who can", "qualify"]):[m
+[32m+[m[32m        return "Eligibility criteria changed"[m
+[32m+[m[32m    if any(k in text for k in ["benefit", "amount", "financial", "assistance", "grant", "subsidy"]):[m
+[32m+[m[32m        return "Benefits or financial assistance changed"[m
+[32m+[m[32m    if any(k in text for k in ["apply", "application", "procedure", "process", "submit"]):[m
+[32m+[m[32m        return "Application procedures changed"[m
+[32m+[m[32m    if any(k in text for k in ["deadline", "date", "effective", "implementation", "within"]):[m
+[32m+[m[32m        return "Deadlines or implementation dates changed"[m
+[32m+[m[32m    if any(k in text for k in ["department", "authority", "ministry", "office"]):[m
+[32m+[m[32m        return "Responsible departments or authorities changed"[m
+[32m+[m[32m    return "Wording changed without clearly established substantive impact"[m
+[32m+[m
+[32m+[m
+[32m+[m[32mdef build_impact_table(changes):[m
+[32m+[m[32m    rows = [][m
+[32m+[m[32m    for c in changes or []:[m
+[32m+[m[32m        old_text = " ".join(c.get("old", []))[m
+[32m+[m[32m        new_text = " ".join(c.get("new", []))[m
+[32m+[m[32m        if not old_text and not new_text:[m
+[32m+[m[32m            continue[m
+[32m+[m[32m        rows.append({[m
+[32m+[m[32m            "type": c.get("type", ""),[m
+[32m+[m[32m            "category": classify_change(c),[m
+[32m+[m[32m            "previous": old_text,[m
+[32m+[m[32m            "new": new_text,[m
+[32m+[m[32m        })[m
+[32m+[m[32m    return rows[m
+[32m+[m
+[32m+[m
+[32m+[m[32mdef build_graph(rows):[m
+[32m+[m[32m    """Build a networkx DiGraph of provision->change->affected group->impact (potential)."""[m
+[32m+[m[32m    try:[m
+[32m+[m[32m        import networkx as nx[m
+[32m+[m[32m    except ImportError:[m
+[32m+[m[32m        return None[m
+[32m+[m[32m    g = nx.DiGraph()[m
+[32m+[m[32m    for i, r in enumerate(rows):[m
+[32m+[m[32m        provision = f"Provision {i+1}"[m
+[32m+[m[32m        change_node = f"Change {i+1}: {r['category']}"[m
+[32m+[m[32m        g.add_node(provision, type="provision")[m
+[32m+[m[32m        g.add_node(change_node, type="change")[m
+[32m+[m[32m        g.add_edge(provision, change_node, relation="changed")[m
+[32m+[m[32m        # potential affected group is inferred generically; label as potential[m
+[32m+[m[32m        affected = "Potentially affected group"[m
+[32m+[m[32m        impact = "Potential impact (not established fact)"[m
+[32m+[m[32m        g.add_node(affected, type="affected_group")[m
+[32m+[m[32m        g.add_node(impact, type="potential_impact")[m
+[32m+[m[32m        g.add_edge(change_node, affected, relation="may affect")[m
+[32m+[m[32m        g.add_edge(affected, impact, relation="potential consequence")[m
+[32m+[m[32m    return g[m
+\ No newline at end of file[m
+[1mdiff --git a/src/reasoning.py b/src/reasoning.py[m
+[1mindex 995734a..bb3fa9e 100644[m
+[1m--- a/src/reasoning.py[m
+[1m+++ b/src/reasoning.py[m
+[36m@@ -81,7 +81,8 @@[m [mdef analyze(query: str, top_k: int = 6, model: str = "openai/gpt-oss-20b"):[m
+             {[m
+                 "source": c["metadata"]["source"],[m
+                 "chunk": c["metadata"]["chunk_id"],[m
+[31m-                "score": round(c["score"], 3)[m
+[32m+[m[32m                "score": round(c["score"], 3),[m
+[32m+[m[32m                "text": c.get("text", ""),[m
+             }[m
+             for c in chunks[m
+         ],[m
