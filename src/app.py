@@ -183,7 +183,7 @@ tab_rag, tab_diff = st.tabs(["🔍 Impact Analysis", "🔄 Version Diff Engine"]
 with tab_rag:
     with st.container():
         # --- One-Click Example Queries ---
-        st.markdown("### 🎯 Try an Example Question")
+        st.markdown("### Try an Example Question")
         example_questions = [
             "What is Mission Shakti and who can benefit from it?",
             "What support does Mission Vatsalya provide for children?",
@@ -225,27 +225,29 @@ with tab_rag:
         else:
             with st.spinner("Searching documents and reasoning..."):
                 try:
-                    out = analyze(query, top_k=top_k)
-                    
+                    out = analyze(query, top_k=top_k) or {}
+                    answer = out.get("answer", "") if isinstance(out, dict) else str(out)
+                    sources = out.get("sources", []) if isinstance(out, dict) else []
+
                     st.markdown("<br>", unsafe_allow_html=True)
                     col_ans, col_src = st.columns([2.5, 1])
-                    
+
                     # Left: Answer
                     with col_ans:
                         st.markdown(f"""
                         <div class="glass-card">
                             <h3 style='color: #38bdf8; margin-top: 0;'>📋 Analysis Report</h3>
                             <div style='color: #e2e8f0; line-height: 1.6;'>
-                                {out["answer"]}
+                                {answer}
                             </div>
                         </div>
                         """, unsafe_allow_html=True)
-                        
+
                     # Right: Audit Trail
                     with col_src:
                         st.markdown("### 📎 Audit Trail")
                         st.caption("The AI grounded its answer in these chunks:")
-                        for s in out["sources"]:
+                        for s in (sources or []):
                             st.markdown(f"""
                             <div class="glass-card" style="padding: 1rem; margin-bottom: 0.5rem;">
                                 <strong style='color: #a78bfa;'>📄 {s['source']}</strong><br>
@@ -254,7 +256,7 @@ with tab_rag:
                             """, unsafe_allow_html=True)
                             
                 except Exception as e:
-                    st.error(f"❌ API Error: {str(e)}\n\nPlease verify your GROQ_API_KEY in the .env file and that the model is available.")
+                    st.error(f"❌ Error: {str(e)}")
 
 # --- TAB 2: DIFF ENGINE ---
 with tab_diff:

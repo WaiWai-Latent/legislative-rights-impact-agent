@@ -19,23 +19,32 @@ _collection = _client.get_or_create_collection(
 _bm25 = None
 _bm25_docs = None
 _bm25_ids = None
+_bm25_built = False
 
 def _build_bm25():
-    global _bm25, _bm25_docs, _bm25_ids
+    global _bm25, _bm25_docs, _bm25_ids, _bm25_built
     all_data = _collection.get(include=["documents", "metadatas"])
-    _bm25_docs = all_data["documents"]
-    _bm25_ids = all_data["ids"]
+    _bm25_docs = all_data.get("documents") or []
+    _bm25_ids = all_data.get("ids") or []
+    _bm25_built = True
+    if not _bm25_docs:
+        _bm25 = None
+        return
     tokenized = [doc.lower().split() for doc in _bm25_docs]
     _bm25 = BM25Okapi(tokenized)
 
 def hybrid_retrieve(query: str, top_k: int = 6, alpha: float = 0.6):
+    if _collection.count() == 0:
+        return []
     """
     alpha=0.6 means 60% weight on dense (semantic), 40% on BM25 (keyword).
     Returns list of {id, text, metadata, score}
     """
-    global _bm25
-    if _bm25 is None:
+    global _bm25, _bm25_built
+    if not _bm25_built:
         _build_bm25()
+    if not _bm25_docs:
+        return []
 
     # --- Dense results ---
     dense = _collection.query(query_texts=[query], n_results=top_k * 2)
@@ -51,9 +60,10 @@ def hybrid_retrieve(query: str, top_k: int = 6, alpha: float = 0.6):
     bm25_map = dict(zip(_bm25_ids, bm25_scores))
 
     # normalize BM25 to [0,1]
-    if bm25_scores.max() > 0:
+    if getattr(bm25_scores, "size", 0) > 0 and bm25_scores.max() > 0:
         max_b = max(bm25_scores)
-        bm25_map = {k: v / max_b for k, v in bm25_map.items()}
+        if max_b > 0:
+            bm25_map = {k: v / max_b for k, v in bm25_map.items()}
 
     # --- Combine ---
     all_ids = set(dense_ids) | set(bm25_map.keys())
