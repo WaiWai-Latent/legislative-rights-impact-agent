@@ -1,5 +1,9 @@
 import streamlit as st
 import os
+<<<<<<< HEAD
+import time
+=======
+>>>>>>> origin/main
 from io import BytesIO
 import pdfplumber
 
@@ -18,11 +22,28 @@ st.set_page_config(
 )
 
 # ==========================================
+<<<<<<< HEAD
+# 2. ADVANCED CUSTOM CSS (Typography & Colors)
+=======
 # 2. ADVANCED CUSTOM CSS (Modern, High-Contrast)
+>>>>>>> origin/main
 # ==========================================
 st.markdown("""
 <style>
     /* Import Modern Fonts */
+<<<<<<< HEAD
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=JetBrains+Mono:wght@400;600&display=swap');
+    
+    /* Apply Outfit to everything */
+    html, body, [class*="css"], .stMarkdown, p, h1, h2, h3, h4, h5, h6 {
+        font-family: 'Outfit', sans-serif !important;
+    }
+
+    /* Main Background */
+    .stApp {
+        background: radial-gradient(circle at top right, #111827, #030712);
+        color: #f3f4f6;
+=======
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
     
     /* Apply font to everything */
@@ -34,6 +55,7 @@ st.markdown("""
     .stApp {
         background: radial-gradient(circle at top right, #0f172a, #020617);
         color: #f8fafc;
+>>>>>>> origin/main
     }
     
     /* Hide default Streamlit Elements */
@@ -43,48 +65,88 @@ st.markdown("""
 
     /* Sidebar Styling */
     section[data-testid="stSidebar"] {
+<<<<<<< HEAD
+        background: rgba(17, 24, 39, 0.95) !important;
+=======
         background: rgba(15, 23, 42, 0.95) !important;
+>>>>>>> origin/main
         border-right: 1px solid rgba(255,255,255,0.05);
         backdrop-filter: blur(10px);
     }
 
+<<<<<<< HEAD
+    /* Typography Colors */
+    h1, h2, h3, h4, h5, h6 {
+        color: #ffffff !important;
+        font-weight: 600 !important;
+=======
     /* Typography */
     h1, h2, h3, h4, h5, h6 {
         color: #ffffff !important;
         font-weight: 700 !important;
+>>>>>>> origin/main
         letter-spacing: -0.02em;
     }
     
     p, .stMarkdown p {
+<<<<<<< HEAD
+        color: #d1d5db !important; /* Light gray for readability */
+=======
         color: #cbd5e1 !important; /* Light gray for readability */
+>>>>>>> origin/main
         font-size: 1.05rem;
         line-height: 1.6;
     }
 
     /* Hero Header */
     .hero-title {
+<<<<<<< HEAD
+        font-size: 3.8rem;
+        font-weight: 800;
+        background: -webkit-linear-gradient(45deg, #60a5fa, #c084fc);
+=======
         font-size: 3.5rem;
         font-weight: 800;
         background: -webkit-linear-gradient(45deg, #38bdf8, #a78bfa);
+>>>>>>> origin/main
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         margin-bottom: 0.2rem;
         line-height: 1.1;
+<<<<<<< HEAD
+        letter-spacing: -0.03em;
+    }
+    .hero-subtitle {
+        font-size: 1.25rem;
+        color: #9ca3af;
+        margin-bottom: 2rem;
+        font-weight: 300;
+        letter-spacing: 0.01em;
+=======
     }
     .hero-subtitle {
         font-size: 1.2rem;
         color: #94a3b8;
         margin-bottom: 2rem;
         font-weight: 400;
+>>>>>>> origin/main
     }
 
     /* Glassmorphism Cards */
     .glass-card {
+<<<<<<< HEAD
+        background: rgba(31, 41, 55, 0.7);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 16px;
+        padding: 1.5rem;
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
+=======
         background: rgba(30, 41, 59, 0.6);
         border: 1px solid rgba(255, 255, 255, 0.08);
         border-radius: 16px;
         padding: 1.5rem;
         box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+>>>>>>> origin/main
         backdrop-filter: blur(12px);
         margin-bottom: 1rem;
     }
@@ -97,7 +159,11 @@ st.markdown("""
         background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
         color: #ffffff;
         border: none;
+<<<<<<< HEAD
+        font-family: 'Outfit', sans-serif;
+=======
         font-family: 'Plus Jakarta Sans', sans-serif;
+>>>>>>> origin/main
         font-weight: 600;
         font-size: 1rem;
         transition: all 0.3s ease;
@@ -111,18 +177,40 @@ st.markdown("""
     
     /* Input Fields */
     .stTextInput>div>div>input {
+<<<<<<< HEAD
+        background-color: rgba(17, 24, 39, 0.8) !important;
+        color: #ffffff !important;
+        border: 1px solid #374151 !important;
+        border-radius: 10px !important;
+        padding: 0.75rem !important;
+        font-size: 1rem !important;
+        font-family: 'Outfit', sans-serif !important;
+=======
         background-color: rgba(15, 23, 42, 0.8) !important;
         color: #ffffff !important;
         border: 1px solid #334155 !important;
         border-radius: 10px !important;
         padding: 0.75rem !important;
         font-size: 1rem !important;
+>>>>>>> origin/main
     }
     .stTextInput>div>div>input:focus {
         border-color: #8b5cf6 !important;
         box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.3) !important;
     }
 
+<<<<<<< HEAD
+    /* Audit Trail Mono Font */
+    .citation-text {
+        font-family: 'JetBrains Mono', monospace !important;
+        font-size: 0.85rem !important;
+        color: #a78bfa !important; /* Purple accent */
+        background: rgba(139, 92, 246, 0.1);
+        padding: 4px 8px;
+        border-radius: 4px;
+        display: inline-block;
+        margin-top: 5px;
+=======
     /* Audit Trail Citations */
     .citation-text {
         font-family: 'JetBrains Mono', monospace !important;
@@ -133,6 +221,7 @@ st.markdown("""
         border-radius: 6px;
         display: inline-block;
         margin-top: 8px;
+>>>>>>> origin/main
     }
     
     /* Tabs */
@@ -141,11 +230,20 @@ st.markdown("""
         background-color: transparent;
     }
     .stTabs [data-baseweb="tab"] {
+<<<<<<< HEAD
+        background-color: rgba(31, 41, 55, 0.5);
+        border-radius: 8px;
+        padding: 10px 20px;
+        color: #9ca3af;
+        border: 1px solid rgba(255,255,255,0.05);
+        font-family: 'Outfit', sans-serif;
+=======
         background-color: rgba(30, 41, 59, 0.5);
         border-radius: 8px;
         padding: 10px 20px;
         color: #94a3b8;
         border: 1px solid rgba(255,255,255,0.05);
+>>>>>>> origin/main
         font-weight: 600;
     }
     .stTabs [aria-selected="true"] {
@@ -154,6 +252,9 @@ st.markdown("""
         border: none;
     }
 </style>
+<<<<<<< HEAD
+""", unsafe_allow_html=True)
+=======
 """, unsafe_allow_html=True)
 
 # ==========================================
@@ -306,3 +407,4 @@ with tab_diff:
                                 st.markdown(f"- **{line}**")
             except Exception as e:
                 st.error(f"Diff failed: {e}")
+>>>>>>> origin/main
