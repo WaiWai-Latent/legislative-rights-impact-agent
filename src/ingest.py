@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 import pdfplumber
 import chromadb
 from chromadb.utils import embedding_functions
@@ -6,8 +7,9 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from datetime import datetime
 
 # ====================== CONFIG ======================
-DATA_DIR = "data/raw"
-CHROMA_PATH = "./chroma_db"
+BASE_DIR = Path(__file__).resolve().parent.parent
+DATA_DIR = str(BASE_DIR / "data" / "raw")
+CHROMA_PATH = str(BASE_DIR / "chroma_db")
 COLLECTION_NAME = "govt_notifications"
 
 # ====================== SETUP ======================
@@ -72,13 +74,24 @@ def ingest_pdf(pdf_path: str, source_name: str = None):
         "ingested_at": datetime.now().isoformat()
     } for i in range(len(chunks))]
 
-    # 4. Add to Chroma
+    # 4. Add to Chroma (skip IDs already present to avoid duplicates on retry)
+    existing = set()
+    try:
+        existing_res = collection.get(ids=ids)
+        existing = set(existing_res.get("ids") or [])
+    except Exception:
+        existing = set()
+    to_add = [(d, i, m) for d, i, m in zip(chunks, ids, metadatas) if i not in existing]
+    if not to_add:
+        print(f"   ℹ️  All chunks already ingested for {source_name}.")
+        return
+    docs, id_list, meta_list = zip(*to_add)
     collection.add(
-        documents=chunks,
-        ids=ids,
-        metadatas=metadatas
+        documents=list(docs),
+        ids=list(id_list),
+        metadatas=list(meta_list)
     )
-    print(f"   ✅ Successfully added {len(chunks)} chunks")
+    print(f"   ✅ Successfully added {len(to_add)} chunks")
 
 
 def ingest_all_pdfs():
