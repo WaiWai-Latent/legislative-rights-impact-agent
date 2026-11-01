@@ -6,6 +6,7 @@ import pdfplumber
 
 import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from reasoning import analyze
 from diff_engine import diff_two_pdfs
 
@@ -169,6 +170,35 @@ with st.sidebar:
     
     st.markdown("---")
     st.caption("v1.0.0")
+
+# ==========================================
+# 0. STARTUP INGESTION (once per session)
+# ==========================================
+def _ensure_ingested():
+    if st.session_state.get("ingestion_done"):
+        return
+    if st.session_state.get("ingestion_error"):
+        st.error(f"Ingestion failed: {st.session_state['ingestion_error']}")
+        return
+    try:
+        from retrieval import _collection
+        if _collection.count() > 0:
+            st.session_state["ingestion_done"] = True
+            return
+        with st.spinner("Ingesting committed policy PDFs into the vector store..."):
+            from ingest import ingest_all_pdfs
+            ingest_all_pdfs()
+        if _collection.count() == 0:
+            msg = "No documents were ingested. Check that PDFs exist under data/raw/."
+            st.session_state["ingestion_error"] = msg
+            st.error(msg)
+        else:
+            st.session_state["ingestion_done"] = True
+    except Exception as e:
+        st.session_state["ingestion_error"] = str(e)
+        st.error(f"Ingestion failed: {e}")
+
+_ensure_ingested()
 
 # ==========================================
 # 4. MAIN CONTENT AREA
