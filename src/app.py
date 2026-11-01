@@ -370,62 +370,97 @@ with tab_diff:
 with tab_impact:
     st.markdown("### 📊 Policy Change Impact Graph")
     st.caption("Upload an earlier and a later version of the same policy document. No versions are fabricated; if you do not have two versions, this feature shows an empty state.")
+
+    # Persist analysis results across reruns so they are not lost after a button click
+    if "impact_results" not in st.session_state:
+        st.session_state["impact_results"] = None
+    if "impact_files" not in st.session_state:
+        st.session_state["impact_files"] = None
+
     c1, c2 = st.columns(2)
     with c1:
         old_file = st.file_uploader("Earlier version (PDF)", type=["pdf"], key="impact_old")
     with c2:
         new_file = st.file_uploader("Later version (PDF)", type=["pdf"], key="impact_new")
 
+    # Detect new file uploads and clear stale results
+    current_files = (getattr(old_file, "name", None), getattr(new_file, "name", None))
+    if st.session_state["impact_files"] != current_files:
+        st.session_state["impact_results"] = None
+        st.session_state["impact_files"] = current_files
+
     if st.button("Analyze Policy Changes", type="primary") and old_file and new_file:
-        import os as _os
-        _os.makedirs("/tmp/lcis", exist_ok=True)
-        p_old = f"/tmp/lcis/{old_file.name}"
-        p_new = f"/tmp/lcis/{new_file.name}"
-        with open(p_old, "wb") as f:
-            f.write(old_file.read())
-        with open(p_new, "wb") as f:
-            f.write(new_file.read())
         try:
+            import os as _os
+            _os.makedirs("/tmp/lcis", exist_ok=True)
+            p_old = f"/tmp/lcis/{old_file.name}"
+            p_new = f"/tmp/lcis/{new_file.name}"
+            with open(p_old, "wb") as f:
+                f.write(old_file.read())
+            with open(p_new, "wb") as f:
+                f.write(new_file.read())
+
             from diff_engine import diff_two_pdfs
             from impact_graph import build_impact_table, build_graph
-            changes = diff_two_pdfs(p_old, p_new)
-            rows = build_impact_table(changes)
+
+            with st.spinner("Comparing documents and classifying changes..."):
+                changes = diff_two_pdfs(p_old, p_new)
+                rows = build_impact_table(changes)
+                g = build_graph(rows)
+
             if not rows:
                 st.info("No meaningful changes detected between the two documents.")
+                st.session_state["impact_results"] = None
             else:
-                st.markdown("#### Change Summary")
-                for r in rows:
-                    st.markdown(f"- **{r['category']}**")
-                    st.markdown(f"  - Previous: {r['previous'] or '(none)'}")
-                    st.markdown(f"  - New: {r['new'] or '(none)'}")
-                st.markdown("#### Detailed Table")
-                st.table(rows)
+                st.session_state["impact_results"] = {
+                    "rows": rows,
+                    "graph": g,
+                    "old_name": old_file.name,
+                    "new_name": new_file.name,
+                }
 
-                # Node selection
-                g = build_graph(rows)
-                if g is not None:
-                    nodes = list(g.nodes())
-                    sel = st.selectbox("Inspect node", nodes)
-                    if sel is not None:
-                        st.markdown(f"**Node:** {sel}")
-                        st.markdown(f"Type: {g.nodes[sel].get('type', 'unknown')}")
-                        st.markdown("Edges:")
-                        for u, v, d in g.edges(data=True):
-                            if u == sel or v == sel:
-                                st.markdown(f"- {u} → {v} ({d.get('relation','')})")
-
-                # Evidence via RAG
-                st.markdown("#### Evidence-Grounded Impact Analysis")
-                query = "What are the impacts of the changes between these two policy versions?"
-                try:
-                    from reasoning import analyze
-                    out = analyze(query, top_k=5)
-                    st.markdown(out.get("answer", "") if isinstance(out, dict) else str(out))
-                    if isinstance(out, dict) and not out.get("sources"):
-                        st.warning("Insufficient evidence to determine impact.")
-                except Exception as e:
-                    st.error(f"Error: {e}")
         except Exception as e:
+            st.session_state["impact_results"] = None
             st.error(f"Analysis failed: {e}")
+
+    # Render persisted results (survives reruns after the button click)
+    results = st.session_state.get("impact_results")
+    if results:
+        rows = results["rows"]
+        g = results["graph"]
+        st.markdown(f"#### Changes: {results['old_name']} → {results['new_name']}")
+        st.markdown("#### Change Summary")
+        for r in rows:
+            st.markdown(f"- **{r['category']}**")
+            st.markdown(f"  - Previous: {r['previous'] or '(none)'}")
+            st.markdown(f"  - New: {r['new'] or '(none)'}")
+        st.markdown("#### Detailed Table")
+        st.table(rows)
+
+        # Node selection
+        if g is not None:
+            nodes = list(g.nodes())
+            sel = st.selectbox("Inspect node", nodes)
+            if sel is not None:
+                st.markdown(f"**Node:** {sel}")
+                st.markdown(f"Type: {g.nodes[sel].get('type', 'unknown')}")
+                st.markdown("Edges:")
+                for u, v, d in g.edges(data=True):
+                    if u == sel or v == sel:
+                        st.markdown(f"- {u} → {v} ({d.get('relation','')})")
+
+        # Evidence via RAG
+        st.markdown("#### Evidence-Grounded Impact Analysis")
+        query = "What are the impacts of the changes between these two policy versions?"
+        try:
+            from reasoning import analyze
+            out = analyze(query, top_k=5)
+            answer = out.get("answer", "") if isinstance(out, dict) else str(out)
+            sources = out.get("sources", []) if isinstance(out, dict) else []
+            st.markdown(answer)
+            if not sources:
+                st.warning("Insufficient evidence to determine impact.")
+        except Exception as e:
+            st.error(f"Error: {e}")
     elif not (old_file and new_file):
         st.info("Upload both versions to analyze policy changes.")
